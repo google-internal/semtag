@@ -1,25 +1,25 @@
 # semtag
 
-語義化版本標籤工具——根據 Git commit 與分支自動推導版本號
+Semantic version tagging tool - automatically calculate version numbers based on Git commits and branches.
 
-## 功能特性
+## Features
 
-- 🚀 依循 Conventional Commits 自動找出下一個版本號
-- 📌 取得當前分支可達的最大版本標籤
-- 🌿 依據分支自動附加預發布尾綴（例如 beta、alpha、rc）
-- 🔄 同步涵蓋穩定版與預發布版的版本策略
+- 🚀 Automatically determine next version following Conventional Commits
+- 📌 Get the current highest version tag from the branch
+- 🌿 Automatically append pre-release suffixes based on branch (e.g. beta, alpha, rc)
+- 🔄 Support both stable and pre-release versioning strategies
 
-## 安裝
+## Installation
 
-### 使用 `go install`
+### Using `go install`
 
 ```bash
 go install github.com/google-internal/semtag/cmd/semtag@latest
 ```
 
-### 從 Release 下載二進位檔
+### Download from Release
 
-官方 Release 會提供常用平台的單檔可執行檔，下載後加上執行權限即可使用：
+Download the pre-built binary for your platform:
 
 ```bash
 # macOS (arm64)
@@ -33,7 +33,7 @@ chmod +x semtag
 sudo mv semtag /usr/local/bin/
 ```
 
-### 從原始碼建置
+### Build from Source
 
 ```bash
 git clone https://github.com/google-internal/semtag.git
@@ -41,213 +41,102 @@ cd semtag
 go build -o semtag ./cmd/semtag
 ```
 
-## 使用方法
+## Usage
 
-### 命令總覽
+### Commands
 
-`semtag` 預設執行 `next`（亦即 `semtag` 等同 `semtag next`）。目前支援的子命令如下：
+`semtag` defaults to `next` command (i.e., `semtag` equals `semtag next`).
 
-| 命令 | 說明 |
-|------|------|
-| `next` | 根據 commit 與分支自動計算下一個版本號 |
-| `current` | 取得當前分支的最新版本號（若無標籤則回傳 `0.0.0`） |
+| Command | Description |
+|---------|-------------|
+| `next` | Calculate the next version based on commits and branch |
+| `current` | Get the current highest version tag (returns `0.0.0` if no tags exist) |
 
-### 計算版本號
+### Basic Usage
 
 ```bash
-# 預設（無前綴）計算下一個語義化版本
+# Calculate next semantic version
 semtag next
 
-# 取得目前分支的最大版本號
+# Get current version
 semtag current
 ```
 
-### 建立並推送標籤
-
-搭配 `git` 指令即可建立並推送標籤：
+### Create and Push Tags
 
 ```bash
-# 計算含前綴的下一個版本
+# Calculate next version with prefix
 VERSION=$(semtag next -p v)
 
-# 建立附註標籤
+# Create annotated tag
 git tag -a "$VERSION" -m "Release ${VERSION}"
 
-# 推送標籤
+# Push tag
 git push origin "refs/tags/${VERSION}"
 ```
 
-指定 `-p`（或 `--prefix`）後，輸出會直接附帶該前綴，可立即拿來作為標籤名稱使用。
+### Options
 
-### 常用參數
+- `--prefix`, `-p`: Version prefix (default: empty string)
+- `--branch-suffix`: Custom branch to pre-release suffix mapping (format: `branch:suffix`)
 
-- `--prefix`, `-p`：指定版本前綴（預設為空字串）
-- `--branch-suffix`：僅對 `next` 生效，自訂分支對應的預發布尾綴，格式 `branch:suffix`，可重複指定，例如 `--branch-suffix develop:beta --branch-suffix release/*:rc`
-
-### 協助指令
+### Help
 
 ```bash
 semtag --help
 semtag next --help
 ```
 
-## 版本計算規則
+## Version Calculation Rules
 
 ### Conventional Commits
 
-`semtag` 依循 [Conventional Commits](https://www.conventionalcommits.org/) 規範決定版本號的升級類型：
+`semtag` follows [Conventional Commits](https://www.conventionalcommits.org/) to determine version bumps:
 
-#### Major 版本（x.0.0）
+#### Major (x.0.0)
 
-偵測到破壞性變更時會提升 Major 版本：
-
-```bash
-# commit 訊息包含 '!' 標記
-git commit -m "feat!: 重大功能調整"
-git commit -m "chore!: 破壞性調整"
-
-# commit body 包含 BREAKING CHANGE
-git commit -m "feat: 新功能" -m "BREAKING CHANGE: API 重大調整"
-```
-
-#### Minor 版本（0.x.0）
-
-偵測到新增功能時會提升 Minor 版本：
+Breaking changes trigger major version bump:
 
 ```bash
-git commit -m "feat: 新增匯出功能"
-git commit -m "feat(auth): 實作使用者驗證"
+# Commit message with '!' marker
+git commit -m "feat!: breaking API change"
+
+# Commit body with BREAKING CHANGE
+git commit -m "feat: new feature" -m "BREAKING CHANGE: API redesign"
 ```
 
-#### Patch 版本（0.0.x）
+#### Minor (0.x.0)
 
-偵測到錯誤修正時會提升 Patch 版本：
+New features trigger minor version bump:
 
 ```bash
-git commit -m "fix: 修正登入失敗"
-git commit -m "fix(api): 修正 API 回應錯誤"
+git commit -m "feat: add export functionality"
+git commit -m "feat(auth): implement user authentication"
 ```
 
-### 分支與預發布版本
+#### Patch (0.0.x)
 
-`semtag` 會依據當前分支自動附加預發布尾綴：
+Bug fixes trigger patch version bump:
 
-| 分支名稱 | 尾綴 | 範例 |
-|----------|------|------|
+```bash
+git commit -m "fix: resolve login issue"
+git commit -m "fix(api): correct API response"
+```
+
+### Branch Pre-release Suffixes
+
+`semtag` automatically appends pre-release suffixes based on the current branch:
+
+| Branch | Suffix | Example |
+|--------|--------|---------|
 | `beta`, `develop`, `dev`, `staging` | `-beta.N` | `1.2.3-beta.1` |
 | `alpha`, `experimental`, `wip` | `-alpha.N` | `1.2.3-alpha.1` |
 | `rc`, `release`, `release/*` | `-rc.N` | `1.2.3-rc.1` |
 | `hotfix`, `hotfix/*` | `-beta.N` | `1.2.3-beta.1` |
 | `feature/*` | `-alpha.N` | `1.2.3-alpha.1` |
-| `main`, `master` | 無尾綴 | `1.2.3` |
-
-### 環境變數設定
-
-可以透過環境變數覆寫分支與尾綴的對應關係：
-
-```bash
-# 方式一：使用逗號分隔的 key:value 列表
-export SVU_BRANCH_SUFFIX_MAPPING="mybranch:custom,another:test"
-
-# 方式二：個別設定環境變數
-export SVU_BRANCH_MYBRANCH_SUFFIX="custom"
-```
-
-## 工作流程範例
-
-### 範例一：主分支發佈
-
-```bash
-# 位於 main 分支
-git checkout main
-
-# 新增功能
-git commit -m "feat: 新增匯出功能"
-
-# 計算版本並建立標籤
-VERSION=$(semtag next -p v)
-git tag -a "$VERSION" -m "Release ${VERSION}"
-git push origin "refs/tags/${VERSION}"
-# 輸出：v1.3.0
-```
-
-### 範例二：開發分支預發布
-
-```bash
-git checkout develop
-git commit -m "feat: 新的實驗功能"
-semtag next
-# 輸出：1.3.0-beta.1
-
-git commit -m "fix: 修正 bug"
-semtag next
-# 輸出：1.3.0-beta.2
-```
-
-### 範例三：在 CI/CD 中使用 CLI
-
-```yaml
-- name: 計算版本號
-  id: version
-  run: |
-    VERSION=$(semtag next -p v)
-    echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
-- name: 建立並推送標籤
-  run: |
-    VERSION="${{ steps.version.outputs.version }}"
-    git tag -a "$VERSION" -m "Release ${VERSION}"
-    git push origin "refs/tags/${VERSION}"
-```
-
-## CI/CD 工作流
-
-專案內建 `Release` 工作流（位於 `.github/workflows/release.yml`），當 `main` 分支有推送時會：
-
-- 透過 `go run ./cmd/semtag` 計算下一個版本並建立標籤
-- 針對 Linux amd64 與 macOS arm64 交叉編譯單一可執行檔
-- 建立 GitHub Release 並上傳對應平台的二進位檔
-
-## 專案結構
-
-```
-.
-├── cmd/
-│   └── semtag/         # CLI 入口與版本計算邏輯
-│       ├── main.go
-│       ├── branch_suffix.go
-│       ├── version.go
-│       └── version_test.go
-├── go.mod               # Go 模組定義
-├── internal/
-│   └── git/            # Git 操作封裝
-│       ├── git.go
-│       └── git_test.go
-├── Dockerfile          # Docker 映像建置
-└── README.md           # 本文件
-```
-
-## 開發
-
-### 執行測試
-
-```bash
-go test ./...
-```
-
-### 建置
-
-```bash
-go build -o semtag ./cmd/semtag
-```
-
-### 建置 Docker 映像
-
-```bash
-docker build -t semtag .
-```
+| `main`, `master` | No suffix | `1.2.3` |
 
 ## License
 
-詳見 LICENSE 檔案。
+MIT License
 
